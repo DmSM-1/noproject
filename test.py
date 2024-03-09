@@ -1,23 +1,38 @@
 import pdb
 import asyncio
+import struct
 import argparse
+
 from aioquic.asyncio import QuicConnectionProtocol, serve
 from aioquic.quic.configuration import QuicConfiguration
+from aioquic.quic.events import QuicEvent, StreamDataReceived
 
 class Protocol(QuicConnectionProtocol):
-    pass
+    def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            length = struct.unpack("!H", bytes(event.data[:2]))[0]
+            data = int.to_bytes(2, length)
+            sata = struct.pack("!H", len(data)) + data
+
+            self._quic.send_stream_data(event.stream_id, data, end_stream=True)
+        pass
+
 
 # pdb.set_trace()
-async def main(host: str, port: int):
-    print(host, port)
+async def main(host: str, port: int) -> None:
     configuration = QuicConfiguration(is_client = False)
 
-    await serve(host = host,
-                     port = port,
-                     configuration = configuration,
-                     create_protocol = Protocol,)
+    await serve(
+        host = host,
+        port = port,
+        configuration = configuration,
+        create_protocol = Protocol,
+    )
     
     print(f"server listenng on {host}:{port}")
+
+    await asyncio.Future()
+    
     
 # pdb.set_trace()
 if __name__ == "__main__":
