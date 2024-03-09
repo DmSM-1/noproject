@@ -8,20 +8,27 @@ from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
 
 class Protocol(QuicConnectionProtocol):
+    # pdb.set_trace()
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
+            print("It is working")
             length = struct.unpack("!H", bytes(event.data[:2]))[0]
             data = int.to_bytes(2, length)
-            sata = struct.pack("!H", len(data)) + data
+            data = struct.pack("!H", len(data)) + data
 
             self._quic.send_stream_data(event.stream_id, data, end_stream=True)
-        pass
 
 
 # pdb.set_trace()
 async def main(host: str, port: int) -> None:
-    configuration = QuicConfiguration(is_client = False)
+    configuration = QuicConfiguration(
+        is_client = False,
+        certificate=None,
+        certificate_chain="cert.pem",
+        private_key="key.pem"
+    )
 
+    # pdb.set_trace()
     await serve(
         host = host,
         port = port,
