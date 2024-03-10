@@ -11,10 +11,8 @@ from typing import Dict, Optional
 
 from aioquic.asyncio import QuicConnectionProtocol, serve
 from aioquic.quic.configuration import QuicConfiguration
-from aioquic.quic.events import QuicEvent, StreamDataReceived
-from aioquic.quic.logger import QuicFileLogger
-from aioquic.tls import SessionTicket
-from dnslib.dns import DNSRecord
+from aioquic.quic.events import QuicEvent, StreamDataReceived, ConnectionTerminated
+
 
 try: 
     import uvloop
@@ -26,9 +24,12 @@ except ImportError:
 
 
 class SSP(QuicConnectionProtocol):
-    def event_handler(self, event: QuicEvent):
-        if isinstance(event, StreamDataReceived):
-            print("eee")
+    def quic_event_received(self, event: QuicEvent):
+        print("e")
+        # if isinstance(event, StreamDataReceived):
+        #     print("Data received:", event.data.decode())
+        # elif isinstance(event, ConnectionTerminated):
+        #     print("Client disconnected:", event.addr)
 
 
 async def main(
@@ -45,7 +46,6 @@ async def main(
         create_protocol = SSP,
         retry           = retry,
     )
-    
     await asyncio.Future()
 
 
@@ -53,6 +53,7 @@ if __name__ == "__main__":
     argv = sys.argv
     if len(argv) != 3:
         print(f"Wrong input values: {argv}")
+        exit()
 
     host = "127.0.0.1" if argv[1] == "d" else argv[1]
     port = 8000        if argv[2] == "d" else int(argv[2])
