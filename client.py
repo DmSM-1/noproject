@@ -1,22 +1,28 @@
-import argparse
 import asyncio
 import logging
+import ssl
 import struct
 import sys
-import pdb
-import os
-import logging
-import ssl
-
+from typing import cast
 
 from aioquic.asyncio.client import connect
-from aioquic.asyncio import QuicConnectionProtocol
+from aioquic.asyncio.protocol import QuicConnectionProtocol
 from aioquic.quic.configuration import QuicConfiguration
-from aioquic.quic.events import QuicEvent, StreamDataReceived, ConnectionTerminated
+from aioquic.quic.events import QuicEvent, StreamDataReceived
+
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class Protocol(QuicConnectionProtocol):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def send(self, message)->None:
+        stream_id = self._quic.get_next_available_stream_id()
+        data = message.encode("utf-8")
+        data = struct.pack("!H", len(data))+data
+        self._quic.send_stream_data(stream_id, data, end_stream=False)
+        self.transmit()
 
 
 async def main(
@@ -26,14 +32,17 @@ async def main(
         message: str,
         local_port: int,
 )->None:
+    print(message)
     async with connect(
         host,
         port,
         configuration=config,
         local_port=local_port,
         wait_connected= True,
+        create_protocol=Protocol
     ) as client:
-        pass
+        client = cast(Protocol, client)
+        await client.send(message=message)   
     
 
 if __name__ == "__main__":
@@ -58,9 +67,7 @@ if __name__ == "__main__":
             host=host,
             port=port,
             config=config,
-            message="1",
+            message=input("Print text:"),
             local_port=uport,
         )
     )
-
-

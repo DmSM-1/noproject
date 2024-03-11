@@ -1,12 +1,9 @@
-import argparse
 import asyncio
 import logging
-import struct
 import sys
-import pdb
-import os
 import logging
-from typing import Dict, Optional
+import datetime
+import subprocess
 
 
 from aioquic.asyncio import QuicConnectionProtocol, serve
@@ -23,13 +20,20 @@ except ImportError:
 # logging.basicConfig(level=logging.DEBUG)
 
 
+class colors:
+    RED     = '\033[91m'
+    GREEN   = '\033[92m'
+    YELLOW  = '\033[93m'
+    BLUE    = '\033[94m'
+    DEFAULT = '\033[0m'
+
+
 class SSP(QuicConnectionProtocol):
     def quic_event_received(self, event: QuicEvent):
-        print("e")
-        # if isinstance(event, StreamDataReceived):
-        #     print("Data received:", event.data.decode())
-        # elif isinstance(event, ConnectionTerminated):
-        #     print("Client disconnected:", event.addr)
+        if isinstance(event,  StreamDataReceived):
+            print(colors.GREEN +\
+                f"|{datetime.datetime.now().strftime(' %H:%M:%S')}|"+\
+                colors.DEFAULT+f" {event.data[2:].decode('utf-8')}")
 
 
 async def main(
@@ -63,18 +67,23 @@ if __name__ == "__main__":
         max_datagram_frame_size=65536,
     )
 
-    # os.path.isfile("ssl/cert.pem")
-    config.load_cert_chain("cert.pem", 
-                           "key.pem", 
+    config.load_cert_chain("ssl/cert.pem", 
+                           "ssl/key.pem", 
                            password="kitten",
     )
-
 
     logging.debug("uvloop was assigned")
     if uvloop is not None:
         uvloop.install()
         
     logging.debug("main task was added")
+    subprocess.call("clear", shell = True)
+
+    helo = f"Server: host={host}, port={port}"
+    print(colors.RED+helo+colors.DEFAULT)
+    print(colors.BLUE+"~"*len(helo)+colors.DEFAULT)
+    print(colors.RED+"| time    | text"+colors.DEFAULT)
+
     asyncio.run(
         main(
             host=host,
@@ -83,6 +92,3 @@ if __name__ == "__main__":
             retry=False,
         )
     )
-
-
-    
