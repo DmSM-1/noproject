@@ -16,13 +16,21 @@ from aioquic.quic.events import QuicEvent, StreamDataReceived
 class Protocol(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.stream_id = None
+
 
     async def send(self, message)->None:
-        stream_id = self._quic.get_next_available_stream_id()
+        self.stream_id = self._quic.get_next_available_stream_id()
         data = message.encode("utf-8")
         data = struct.pack("!H", len(data))+data
-        self._quic.send_stream_data(stream_id, data, end_stream=False)
+        self._quic.send_stream_data(self.stream_id, data, end_stream=False)
+
         self.transmit()
+
+    def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            recv_mes = event.data[2:].decode('utf-8')
+            print(recv_mes) 
 
 
 async def main(
@@ -32,7 +40,6 @@ async def main(
         message: str,
         local_port: int,
 )->None:
-    print(message)
     async with connect(
         host,
         port,
@@ -43,17 +50,19 @@ async def main(
     ) as client:
         client = cast(Protocol, client)
         await client.send(message=message)   
+        await asyncio.sleep(1)
     
 
 if __name__ == "__main__":
     argv = sys.argv
-    if len(argv) != 4:
+    if len(argv) != 5:
         print(f"Wrong input values: {argv}")
         exit()
 
     host = "127.0.0.1" if argv[1] == "d" else argv[1]
     port = 8000        if argv[2] == "d" else int(argv[2])
     uport= 2000        if argv[3] == "d" else int(argv[3])
+    message = argv[4]
 
     config = QuicConfiguration(
         is_client=True,
@@ -67,7 +76,7 @@ if __name__ == "__main__":
             host=host,
             port=port,
             config=config,
-            message=input("Print text:"),
+            message=message,
             local_port=uport,
         )
     )

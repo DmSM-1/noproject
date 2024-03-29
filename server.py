@@ -4,6 +4,7 @@ import sys
 import logging
 import datetime
 import subprocess
+import struct
 
 
 from aioquic.asyncio import QuicConnectionProtocol, serve
@@ -17,9 +18,6 @@ except ImportError:
     uvloop = None
 
 
-# logging.basicConfig(level=logging.DEBUG)
-
-
 class colors:
     RED     = '\033[91m'
     GREEN   = '\033[92m'
@@ -29,11 +27,33 @@ class colors:
 
 
 class SSP(QuicConnectionProtocol):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.messages = []
+    
+    def quic_send(self, stream_id, message,)->None:
+        data = message.encode("utf-8")
+        data = struct.pack("!H", len(data))+data
+        self._quic.send_stream_data(stream_id, data, end_stream=True)
+        self.transmit()
+
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event,  StreamDataReceived):
+            recv_mes = event.data[2:].decode('utf-8')
             print(colors.GREEN +\
                 f"|{datetime.datetime.now().strftime(' %H:%M:%S')}|"+\
-                colors.DEFAULT+f" {event.data[2:].decode('utf-8')}")
+                colors.DEFAULT+f" {recv_mes}")
+            
+            self.messages.append(recv_mes)
+            self.quic_send(event.stream_id ,recv_mes)
+        
+
+    # async def quic_send(self, message)->None:
+    # stream_id = self._quic.get_next_available_stream_id()
+    # data = message.encode("utf-8")
+    # data = struct.pack("!H", len(data))+data
+    # self._quic.send_stream_data(stream_id, data, end_stream=False)
+    # self.transmit()
 
 
 async def main(
@@ -51,6 +71,7 @@ async def main(
         retry           = retry,
     )
     await asyncio.Future()
+    
 
 
 if __name__ == "__main__":
