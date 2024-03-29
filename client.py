@@ -4,6 +4,8 @@ import ssl
 import struct
 import sys
 from typing import cast
+import json
+from special_json import *
 
 from aioquic.asyncio.client import connect
 from aioquic.asyncio.protocol import QuicConnectionProtocol
@@ -13,14 +15,21 @@ from aioquic.quic.events import QuicEvent, StreamDataReceived
 # logging.basicConfig(level=logging.DEBUG)
 
 
-class Protocol(QuicConnectionProtocol):
+class User(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stream_id = None
+        self.uesrname = None
+        self.message_buffer = []
+
+    
+    async def sync(self, name):
+        self.stream_id = self._quic.get_next_available_stream_id()
+        data = js_message(CON.AUT, name, data=input("Mes:"))
+        await self.send(json.dumps(data.to_js()))
 
 
     async def send(self, message)->None:
-        self.stream_id = self._quic.get_next_available_stream_id()
         data = message.encode("utf-8")
         data = struct.pack("!H", len(data))+data
         self._quic.send_stream_data(self.stream_id, data, end_stream=False)
@@ -31,6 +40,7 @@ class Protocol(QuicConnectionProtocol):
         if isinstance(event, StreamDataReceived):
             recv_mes = event.data[2:].decode('utf-8')
             print(recv_mes) 
+
 
 
 async def main(
@@ -46,11 +56,11 @@ async def main(
         configuration=config,
         local_port=local_port,
         wait_connected= True,
-        create_protocol=Protocol
+        create_protocol=User
     ) as client:
-        client = cast(Protocol, client)
-        await client.send(message=message)   
-        await asyncio.sleep(1)
+        client = cast(User, client)
+        await client.sync(message)
+        await asyncio.sleep(0.1)
     
 
 if __name__ == "__main__":
