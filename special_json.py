@@ -1,5 +1,4 @@
 import datetime
-from jsonschema import validate
 
 
 class CON:
