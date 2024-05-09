@@ -2,14 +2,17 @@ import pdb
 import asyncio
 import struct
 import argparse
+import ssl
 
 from aioquic.asyncio import QuicConnectionProtocol, connect
 from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
+from time import sleep
 
 
 async def send_message(host: str, port: int, message: bytes):
     configuration = QuicConfiguration(is_client= True)
+    configuration.verify_mode = ssl.CERT_NONE
 
     # pdb.set_trace()
     async with connect(
@@ -18,11 +21,12 @@ async def send_message(host: str, port: int, message: bytes):
         configuration = configuration,
     ) as conn:
         # pdb.set_trace()
+        
         stream_id = conn._quic.get_next_available_stream_id()
-        stream    = conn._quic._get_or_create_stream_for_send()
+        # sleep(20)
         conn._quic.send_stream_data(stream_id, message, end_stream=True)
-        pdb.set_trace()
-        conn.transmit()
+        # pdb.set_trace()
+        # conn.transmit()
 
 
 if __name__ == "__main__":
@@ -37,3 +41,4 @@ if __name__ == "__main__":
     data = struct.pack("!H", len(data)) + data
 
     asyncio.run(send_message(args.host, args.port, data))
+    

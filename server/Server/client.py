@@ -13,7 +13,7 @@ from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
 
 # logging.basicConfig(level=logging.DEBUG)
-# tmux
+
 
 class User(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs):

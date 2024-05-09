@@ -1,19 +1,15 @@
 import asyncio
 import logging
 import ssl
-import struct
 import sys
 from typing import cast
-import json
-from special_json import *
 
 from aioquic.asyncio.client import connect
 from aioquic.asyncio.protocol import QuicConnectionProtocol
 from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
 
-# logging.basicConfig(level=logging.DEBUG)
-# tmux
+from src.myjson import *
 
 class User(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs):
@@ -22,18 +18,15 @@ class User(QuicConnectionProtocol):
         self.uesrname = None
         self.message_buffer = []
 
-    
+
     async def sync(self, name):
         self.stream_id = self._quic.get_next_available_stream_id()
-        data = js_message(CON.AUT, name, data=input("Mes:"))
-        await self.send(json.dumps(data.to_js()))
+        frame = Sig(name='425425', password='ERWGER')
+        await self.send(frame)
 
 
-    async def send(self, message)->None:
-        data = message.encode("utf-8")
-        data = struct.pack("!H", len(data))+data
-        self._quic.send_stream_data(self.stream_id, data, end_stream=False)
-
+    async def send(self, frame)->None:
+        self._quic.send_stream_data(self.stream_id, frame.to_json(), end_stream=False)
         self.transmit()
 
     def quic_event_received(self, event: QuicEvent):
@@ -61,7 +54,7 @@ async def main(
         client = cast(User, client)
         await client.sync(message)
         await asyncio.sleep(0.1)
-    
+
 
 if __name__ == "__main__":
     argv = sys.argv
@@ -79,7 +72,7 @@ if __name__ == "__main__":
         max_datagram_frame_size=65536,
     )
     config.verify_mode = ssl.CERT_NONE
-        
+
     logging.debug("main task was added")
     asyncio.run(
         main(
